@@ -1,57 +1,13 @@
-// ---- Default Book Collection ----
-const defaultBooks = [
-  { id: 1, title: "The Hobbit", author: "J.R.R. Tolkien", year: 1937 },
-  { id: 2, title: "1984", author: "George Orwell", year: 1949 },
-  { id: 3, title: "Fahrenheit 451", author: "Ray Bradbury", year: 1953 },
-  { id: 4, title: "Dune", author: "Frank Herbert", year: 1965 },
-  { id: 5, title: "The Catcher in the Rye", author: "J.D. Salinger", year: 1951 },
-  { id: 6, title: "To Kill a Mockingbird", author: "Harper Lee", year: 1960 },
-  { id: 7, title: "Moby-Dick", author: "Herman Melville", year: 1851 },
-  { id: 8, title: "The Great Gatsby", author: "F. Scott Fitzgerald", year: 1925 },
-  { id: 9, title: "Brave New World", author: "Aldous Huxley", year: 1932 },
-  { id: 10, title: "The Road", author: "Cormac McCarthy", year: 2006 },
-  { id: 11, title: "The Martian", author: "Andy Weir", year: 2011 },
-  { id: 12, title: "Harry Potter 1", author: "J.K. Rowling", year: 1997 },
-  { id: 13, title: "Harry Potter 2", author: "J.K. Rowling", year: 1998 },
-  { id: 14, title: "Harry Potter 3", author: "J.K. Rowling", year: 1999 },
-  { id: 15, title: "Harry Potter 4", author: "J.K. Rowling", year: 2000 },
-  { id: 16, title: "Harry Potter 5", author: "J.K. Rowling", year: 2003 },
-  { id: 17, title: "The Name of the Wind", author: "Patrick Rothfuss", year: 2007 },
-  { id: 18, title: "Mistborn", author: "Brandon Sanderson", year: 2006 },
-  { id: 19, title: "The Way of Kings", author: "Brandon Sanderson", year: 2010 },
-  { id: 20, title: "Ender's Game", author: "Orson Scott Card", year: 1985 },
-  { id: 21, title: "Neuromancer", author: "William Gibson", year: 1984 },
-  { id: 22, title: "Snow Crash", author: "Neal Stephenson", year: 1992 },
-  { id: 23, title: "The Shining", author: "Stephen King", year: 1977 },
-  { id: 24, title: "It", author: "Stephen King", year: 1986 },
-  { id: 25, title: "Carrie", author: "Stephen King", year: 1974 },
-  { id: 26, title: "The Giver", author: "Lois Lowry", year: 1993 },
-  { id: 27, title: "Animal Farm", author: "George Orwell", year: 1945 },
-  { id: 28, title: "The Alchemist", author: "Paulo Coelho", year: 1988 },
-  { id: 29, title: "Ready Player One", author: "Ernest Cline", year: 2011 },
-  { id: 30, title: "American Gods", author: "Neil Gaiman", year: 2001 }
-];
+const API = "https://YOUR-BACKEND-URL.onrender.com";
 
-// ---- Load or Initialize Local Storage ----
-let books = JSON.parse(localStorage.getItem("books")) || defaultBooks;
-saveBooks();
+let currentPage = 1;
 
-// ---- Persist to localStorage ----
-function saveBooks() {
-  localStorage.setItem("books", JSON.stringify(books));
-}
+async function loadBooks() {
+  const res = await fetch(`${API}/books?page=${currentPage}`);
+  const data = await res.json();
 
-// ---- Rendering: List View with Number Column ----
-function renderList() {
   const container = document.getElementById("listView");
-  if (!container) return;
-
   container.innerHTML = "";
-
-  if (books.length === 0) {
-    container.innerHTML = "<p>No books found.</p>";
-    return;
-  }
 
   const table = document.createElement("table");
   table.innerHTML = `
@@ -64,98 +20,67 @@ function renderList() {
     </tr>
   `;
 
-  books.forEach((book, index) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${book.title}</td>
-      <td>${book.author}</td>
-      <td>${book.year}</td>
-      <td>
-        <button onclick="editBook(${book.id})">Edit</button>
-        <button onclick="deleteBook(${book.id})">Delete</button>
-      </td>
+  data.books.forEach((b, i) => {
+    table.innerHTML += `
+      <tr>
+        <td>${(currentPage - 1) * 10 + i + 1}</td>
+        <td>${b.title}</td>
+        <td>${b.author}</td>
+        <td>${b.year}</td>
+        <td>
+          <button onclick="editBook(${b.id})">Edit</button>
+          <button onclick="deleteBook(${b.id})">Delete</button>
+        </td>
+      </tr>
     `;
-    table.appendChild(row);
   });
 
   container.appendChild(table);
 }
 
-// ---- Add Book with Number Validation ----
-function addBook() {
-  const title = prompt("Book Title:");
+async function addBook() {
+  const title = prompt("Title:");
   const author = prompt("Author:");
+  const year = prompt("Year:");
 
-  if (!title || !author) {
-    alert("All fields required.");
-    return;
-  }
+  await fetch(`${API}/books`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, author, year })
+  });
 
-  let year = prompt("Publication Year:");
-
-  while (!year || isNaN(year)) {
-    alert("Year must be a number!");
-    year = prompt("Publication Year (numbers only):");
-  }
-
-  const book = {
-    id: Date.now(),
-    title,
-    author,
-    year: parseInt(year)
-  };
-
-  books.push(book);
-  saveBooks();
-  renderList();
+  loadBooks();
 }
 
-// ---- Edit Book with Number Validation ----
-function editBook(id) {
-  const book = books.find(b => b.id === id);
-  if (!book) return;
+async function deleteBook(id) {
+  if (!confirm("Delete this book?")) return;
 
-  const title = prompt("Edit Title:", book.title);
-  const author = prompt("Edit Author:", book.author);
-
-  if (!title || !author) {
-    alert("Title and Author are required.");
-    return;
-  }
-
-  let year = prompt("Edit Year:", book.year);
-
-  while (!year || isNaN(year)) {
-    alert("Year must be a number!");
-    year = prompt("Edit Year (numbers only):", book.year);
-  }
-
-  book.title = title;
-  book.author = author;
-  book.year = parseInt(year);
-
-  saveBooks();
-  renderList();
+  await fetch(`${API}/books/${id}`, { method: "DELETE" });
+  loadBooks();
 }
 
-// ---- Delete Book ----
-function deleteBook(id) {
-  if (!confirm("Are you sure you want to delete this book?")) return;
-  books = books.filter(b => b.id !== id);
-  saveBooks();
-  renderList();
+async function editBook(id) {
+  const title = prompt("New title:");
+  const author = prompt("New author:");
+  const year = prompt("New year:");
+
+  await fetch(`${API}/books/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, author, year })
+  });
+
+  loadBooks();
 }
 
-// ---- Stats (for stats.html) ----
-function getStats() {
-  return {
-    total: books.length,
-    avgYear: Math.round(books.reduce((sum, b) => sum + b.year, 0) / books.length)
-  };
+function nextPage() {
+  currentPage++;
+  loadBooks();
 }
 
-// ---- Auto-render list on page load ----
-window.onload = () => {
-  renderList();
-};
+function prevPage() {
+  if (currentPage > 1) currentPage--;
+  loadBooks();
+}
+
+window.onload = loadBooks;
